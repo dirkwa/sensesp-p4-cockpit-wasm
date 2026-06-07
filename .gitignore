@@ -1,0 +1,4 @@
+build/
+public/jlp_wasm.js
+public/jlp_wasm.wasm
+src/lv_conf.firmware.h.ref

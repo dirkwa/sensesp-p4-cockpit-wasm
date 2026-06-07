@@ -1,0 +1,99 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>JLP WASM — render real layout JSON</title>
+<style>
+  body { background: #0d1117; color: #e6edf3; font-family: ui-sans-serif, system-ui; margin: 24px; }
+  #lvgl-canvas { background: #161b22; border: 1px solid #30363d; display: block; }
+  h1 { font-size: 14px; margin: 0 0 12px; color: #8b949e; }
+  #status { font-size: 12px; color: #8b949e; margin-top: 8px; }
+  #status.err { color: #f85149; }
+  textarea { width: 1024px; height: 200px; background: #0d1117; color: #e6edf3; border: 1px solid #30363d; font-family: ui-monospace, monospace; font-size: 12px; margin-top: 12px; }
+  button { background: #21262d; color: #e6edf3; border: 1px solid #30363d; padding: 6px 12px; margin-right: 6px; cursor: pointer; }
+</style>
+<h1>LVGL 1024×600 from JSON (JS → wasm → SDL → canvas)</h1>
+<canvas id="lvgl-canvas" width="1024" height="600"></canvas>
+<div id="status">loading…</div>
+<div style="margin-top: 12px;">
+  <button id="apply">apply layout</button>
+  <button id="example">load example</button>
+  <button id="setv">set tanks.fuel = 0.7</button>
+</div>
+<textarea id="layout-json"></textarea>
+<script type="module">
+  import createJlpWasm from './jlp_wasm.js'
+  const status = document.getElementById('status')
+  const ta = document.getElementById('layout-json')
+  const example = {
+    schema: 1,
+    name: 'wasm-test',
+    screens: [{
+      id: 'main', title: 'Main',
+      widgets: [
+        { type: 'arc', id: 'a1', x: 60, y: 80, w: 380, h: 380,
+          label: 'FUEL', bind: 'tanks.fuel', min: 0, max: 1,
+          display: { scale: 100, decimals: 0, unit: '%' } },
+        { type: 'label', id: 'l1', x: 500, y: 80, w: 460, h: 80,
+          label: 'JLP via WASM',
+          bg_color: '#161b22', fg_color: '#e6edf3' },
+        { type: 'bar', id: 'b1', x: 500, y: 220, w: 460, h: 60,
+          label: 'BATT', bind: 'electrical.batteries.soc',
+          min: 0, max: 1,
+          display: { scale: 100, decimals: 0, unit: '%' } },
+        { type: 'button', id: 'btn', x: 500, y: 320, w: 200, h: 140,
+          label: 'STOP', bind: 'helm.estop', press_value: true,
+          bg_color: '#f85149' }
+      ]
+    }]
+  }
+  ta.value = JSON.stringify(example, null, 2)
+
+  const mod = await createJlpWasm({
+    canvas: document.getElementById('lvgl-canvas'),
+    print: (s) => console.log('[wasm]', s),
+    printErr: (s) => console.error('[wasm]', s),
+  })
+  status.textContent = 'wasm ready'
+
+  const init = mod._jlp_init(1024, 600)
+  if (init !== 0) {
+    status.textContent = 'init failed: ' + init
+    status.classList.add('err')
+  } else {
+    status.textContent = 'init ok — click apply'
+  }
+
+  const apply = (jsonStr) => {
+    const ptr = mod.allocateUTF8 ? mod.allocateUTF8(jsonStr) :
+      (() => {
+        const len = mod.lengthBytesUTF8 ? mod.lengthBytesUTF8(jsonStr) + 1 : (jsonStr.length * 4 + 1)
+        const p = mod._malloc(len)
+        mod.stringToUTF8(jsonStr, p, len)
+        return p
+      })()
+    const errPtr = mod._jlp_apply_layout(ptr)
+    const err = mod.UTF8ToString(errPtr)
+    mod._free(ptr)
+    if (err) {
+      status.textContent = 'apply error: ' + err
+      status.classList.add('err')
+    } else {
+      status.textContent = 'apply ok'
+      status.classList.remove('err')
+    }
+  }
+
+  document.getElementById('apply').onclick = () => apply(ta.value)
+  document.getElementById('example').onclick = () => { ta.value = JSON.stringify(example, null, 2); apply(ta.value) }
+  document.getElementById('setv').onclick = () => {
+    const path = 'tanks.fuel'
+    const len = mod.lengthBytesUTF8 ? mod.lengthBytesUTF8(path) + 1 : 32
+    const p = mod._malloc(len)
+    mod.stringToUTF8(path, p, len)
+    mod._jlp_set_value_float(p, 0.7)
+    mod._free(p)
+    status.textContent = 'tanks.fuel = 0.7'
+  }
+
+  // Apply the example automatically so you see something immediately.
+  apply(ta.value)
+</script>
