@@ -21,6 +21,7 @@
 #include <emscripten/html5.h>
 #include <emscripten/bind.h>
 
+#include <set>
 #include <string>
 
 #include "lvgl.h"
@@ -30,6 +31,7 @@
 
 #include "subject_registry.h"
 #include "zone_registry.h"
+#include "notifications_registry.h"
 #include "widgets/widget_factory.h"
 
 static lv_display_t* disp = nullptr;
@@ -147,6 +149,54 @@ void jlp_set_path_meta(const char* path, const char* meta_json) {
   JsonDocument doc;
   if (deserializeJson(doc, meta_json)) return;
   jlp::zones().apply_meta(path, doc.as<JsonObjectConst>());
+}
+
+// Replace the entire notifications snapshot from a JSON array of
+// `{path, state, message}` rows. Removes any previously-known
+// notification whose path isn't in the new array (so cleared
+// notifications disappear from list widgets and the alert overlay
+// dismisses). Fires the registry's on_change observers so listeners
+// (list widget rows, alert overlay) re-render.
+//
+// `path` is the suffix after `notifications.` — same convention the
+// firmware NotificationsRegistry uses, and what designer's
+// fetchNotifications() returns.
+EMSCRIPTEN_KEEPALIVE
+void jlp_set_notifications(const char* snapshot_json) {
+  JsonDocument doc;
+  if (deserializeJson(doc, snapshot_json)) return;
+  JsonArrayConst arr = doc.as<JsonArrayConst>();
+  if (arr.isNull()) return;
+
+  // Build the new key set so we can clear removals first.
+  std::set<std::string> incoming;
+  for (JsonObjectConst row : arr) {
+    const char* p = row["path"] | (const char*)nullptr;
+    if (p) incoming.insert(p);
+  }
+
+  // Clear any prior path not in the new snapshot. snapshot(true)
+  // returns the registry's current set including cleared rows.
+  auto current = jlp::notifications().snapshot(true);
+  for (const auto& n : current) {
+    if (!incoming.count(n.path)) {
+      JsonDocument null_doc;  // a default-constructed variant reads as null
+      jlp::notifications().apply(n.path, null_doc.as<JsonVariantConst>());
+    }
+  }
+
+  // Apply each row. The registry treats this as upsert.
+  for (JsonObjectConst row : arr) {
+    const char* p = row["path"] | (const char*)nullptr;
+    if (!p) continue;
+    // Build a fresh value object the registry's apply() expects
+    // (it reads `state` and `message`).
+    JsonDocument val_doc;
+    JsonObject val = val_doc.to<JsonObject>();
+    val["state"]   = row["state"]   | "normal";
+    val["message"] = row["message"] | "";
+    jlp::notifications().apply(p, val_doc.as<JsonVariantConst>());
+  }
 }
 
 }  // extern "C"
