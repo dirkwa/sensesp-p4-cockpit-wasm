@@ -29,6 +29,7 @@
 #include <ArduinoJson.h>
 
 #include "subject_registry.h"
+#include "zone_registry.h"
 #include "widgets/widget_factory.h"
 
 static lv_display_t* disp = nullptr;
@@ -132,6 +133,20 @@ void jlp_set_value_bool(const char* path, int v) {
   lv_subject_t* s = jlp::registry().lookup(path);
   if (!s) return;
   lv_subject_set_int(s, v ? 1 : 0);
+}
+
+// Feed a SignalK meta object for a path. Designer fetches meta via
+// the SK REST tree (zones, description, displayUnits, units) and
+// pushes the relevant shape here so wasm widgets can do zone-colored
+// renders + description-over-value labels, matching the device.
+//
+// Expected JSON shape (subset of SK meta):
+//   { "description": "...", "zones": [{"lower":N,"upper":N,"state":"alarm"}, ...] }
+EMSCRIPTEN_KEEPALIVE
+void jlp_set_path_meta(const char* path, const char* meta_json) {
+  JsonDocument doc;
+  if (deserializeJson(doc, meta_json)) return;
+  jlp::zones().apply_meta(path, doc.as<JsonObjectConst>());
 }
 
 }  // extern "C"

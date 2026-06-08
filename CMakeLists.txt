@@ -83,7 +83,7 @@ target_link_options(jlp_wasm PRIVATE
   "-sINITIAL_MEMORY=33554432"
   "-sALLOW_MEMORY_GROWTH=1"
   "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8','UTF8ToString','stringToUTF8','lengthBytesUTF8','allocateUTF8']"
-  "-sEXPORTED_FUNCTIONS=['_jlp_init','_jlp_apply_layout','_jlp_set_value_float','_jlp_set_value_int','_jlp_set_value_bool','_malloc','_free']"
+  "-sEXPORTED_FUNCTIONS=['_jlp_init','_jlp_apply_layout','_jlp_set_value_float','_jlp_set_value_int','_jlp_set_value_bool','_jlp_set_path_meta','_malloc','_free']"
   "-sNO_EXIT_RUNTIME=1"
   "-sINVOKE_RUN=0"
   "-sMODULARIZE=1"
