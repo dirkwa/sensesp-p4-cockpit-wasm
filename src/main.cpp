@@ -27,6 +27,14 @@
 #include "lvgl.h"
 #include "src/drivers/sdl/lv_sdl_window.h"
 
+// SDL2 is statically linked through emscripten's port. We only need
+// SDL_EventState here to tell SDL "don't watch for keyboard / mouse"
+// — the designer drives LVGL from JS, not from page input. Without
+// this, SDL's keydown handler captures every key on the page (the
+// canvas + document target) and the inspector inputs / F12 / Ctrl-R
+// stop working because preventDefault eats every keystroke.
+#include <SDL2/SDL_events.h>
+
 #include <ArduinoJson.h>
 
 #include "subject_registry.h"
@@ -52,6 +60,21 @@ int jlp_init(int w, int h) {
   lv_init();
   disp = lv_sdl_window_create(w, h);
   if (!disp) return -1;
+  // Stop SDL from intercepting keyboard + mouse on the page. Each
+  // SDL_EventState(..., SDL_DISABLE) call removes the corresponding
+  // event class from SDL's processing AND tells emscripten's SDL2
+  // port to stop installing its document-level listeners for it.
+  // Without these, the embedded LVGL canvas grabs every keystroke
+  // (F12, Ctrl-Shift-R, typing in the designer's inspector inputs)
+  // because SDL's default keydown handler calls preventDefault.
+  SDL_EventState(SDL_KEYDOWN,     SDL_DISABLE);
+  SDL_EventState(SDL_KEYUP,       SDL_DISABLE);
+  SDL_EventState(SDL_TEXTINPUT,   SDL_DISABLE);
+  SDL_EventState(SDL_TEXTEDITING, SDL_DISABLE);
+  SDL_EventState(SDL_MOUSEMOTION, SDL_DISABLE);
+  SDL_EventState(SDL_MOUSEBUTTONDOWN, SDL_DISABLE);
+  SDL_EventState(SDL_MOUSEBUTTONUP,   SDL_DISABLE);
+  SDL_EventState(SDL_MOUSEWHEEL,      SDL_DISABLE);
   lv_obj_t* scr = lv_screen_active();
   lv_obj_set_style_bg_color(scr, lv_color_hex(0x0d1117), LV_PART_MAIN);
   emscripten_request_animation_frame_loop(frame, nullptr);
