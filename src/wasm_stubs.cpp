@@ -194,7 +194,8 @@ NotificationsRegistry::snapshot(bool include_cleared) const {
   std::vector<Notification> out;
   out.reserve(map_.size());
   for (const auto& kv : map_) {
-    if (acked_.count(kv.first)) continue;
+    // Match firmware: ack suppresses the alert-overlay popup only,
+    // not the list. The bus condition is still live.
     if (!include_cleared) {
       if (kv.second.state == NotState::Normal ||
           kv.second.state == NotState::Nominal) continue;
