@@ -151,6 +151,13 @@ void ZoneRegistry::apply_meta(const std::string& path,
   map_[path] = std::move(zones);
   const char* desc = meta["description"] | (const char*)nullptr;
   if (desc) descriptions_[path] = desc;
+  // Mirror firmware: kick any subject bound to this path so widget
+  // observers re-run with the freshly-loaded description/zones,
+  // even before the next value delta arrives. Without this, label
+  // widgets for paths whose value never changes (a closed switch
+  // state, for instance) stay at "—" forever.
+  lv_subject_t* sub = registry().lookup(path);
+  if (sub) lv_subject_notify(sub);
 }
 
 ZoneRegistry& zones() {
