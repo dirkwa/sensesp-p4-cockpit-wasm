@@ -104,8 +104,20 @@ const Zone* ZoneRegistry::match(const std::string& path,
                                 float raw_value) const {
   auto it = map_.find(path);
   if (it == map_.end()) return nullptr;
-  for (const auto& z : it->second) {
-    if (raw_value >= z.lower && raw_value <= z.upper) return &z;
+  const auto& zs = it->second;
+  // Mirror firmware semantics: half-open [lower, upper) for all zones
+  // except the topmost, which is inclusive so a value sitting exactly
+  // on the upper boundary (e.g. full tank 1.0) still tints.
+  float top_edge = -1e30f;
+  for (const auto& z : zs) if (z.upper > top_edge) top_edge = z.upper;
+  for (const auto& z : zs) {
+    if (z.lower == z.upper) {
+      if (raw_value == z.lower) return &z;
+    } else if (raw_value >= z.lower && raw_value < z.upper) {
+      return &z;
+    } else if (raw_value == z.upper && z.upper == top_edge) {
+      return &z;
+    }
   }
   return nullptr;
 }
