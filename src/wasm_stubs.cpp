@@ -151,13 +151,14 @@ void ZoneRegistry::apply_meta(const std::string& path,
   map_[path] = std::move(zones);
   const char* desc = meta["description"] | (const char*)nullptr;
   if (desc) descriptions_[path] = desc;
-  // Match firmware: do NOT notify the subject here. Firing the
-  // observer with the subject's current value (often the initial
-  // 0) overwrites the label with a stale 0 on slow-updating paths
-  // and never recovers because SK only sends deltas on change.
-  // The widget builder reads description() at construction time
-  // for the initial text, and real value deltas drive subsequent
-  // updates.
+  // Match firmware: notify the bound subject so observers re-fire
+  // and pick up the just-loaded description/zones. build_label
+  // pre-seeds its text from description() at construction time,
+  // so observer-fire-on-meta no longer overwrites a stale-but-
+  // correct rendering with a stale zero — the worry behind the
+  // earlier revert.
+  lv_subject_t* sub = registry().lookup(path);
+  if (sub) lv_subject_notify(sub);
 }
 
 ZoneRegistry& zones() {
