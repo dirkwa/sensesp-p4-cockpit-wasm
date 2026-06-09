@@ -107,6 +107,7 @@
 #define LV_FONT_MONTSERRAT_28 1
 #define LV_FONT_MONTSERRAT_30 0
 #define LV_FONT_MONTSERRAT_32 0
+#define LV_FONT_MONTSERRAT_36 1
 #define LV_FONT_DEFAULT       &lv_font_montserrat_14
 
 /* ---- driver: SDL — emscripten will glue this to <canvas> ---- */
