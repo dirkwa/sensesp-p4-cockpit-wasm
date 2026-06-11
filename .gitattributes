@@ -1,0 +1,10 @@
+# Force LF line endings on checkout regardless of the host's
+# core.autocrlf setting. The emscripten build's generated .js shim
+# must stay LF or the designer's bundler diffs it against an old
+# wasm/.js pair on Windows.
+* text=auto eol=lf
+
+# The generated WASM + glue artifacts are committed under public/
+# for the designer's copy-wasm.sh to pick up. Treat as binary.
+public/jlp_wasm.wasm binary
+public/jlp_wasm.js  -text -diff
