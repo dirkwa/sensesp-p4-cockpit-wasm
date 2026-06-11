@@ -5,21 +5,30 @@ LVGL + JLP widget factory compiled to WebAssembly. Renders the
 an HTML `<canvas>` via SDL2 (emscripten port).
 
 Purpose: pixel-perfect designer preview without a connected device.
-The designer can drop layout JSON in and get back the same pixels the
+The designer drops layout JSON in and gets back the same pixels the
 P4 panel would draw — no SVG approximation, no font drift, no
 LVGL-version skew.
 
+This is the default preview mode in
+[signalk-hmi-designer](https://github.com/dirkwa/signalk-hmi-designer);
+the live-mirror mode (HTTP-polled `/screenshot?fmt=jpeg` from a real
+device) is the fallback when a panel happens to be connected.
+
 ## Layout
 
-- `src/main.cpp` — JS bridge (`jlp_init`, `jlp_apply_layout`,
-  `jlp_set_value_*`).
+- `src/main.cpp` — JS bridge: `jlp_init(w, h)`,
+  `jlp_apply_layout(json)`, `jlp_set_value_float/int/bool(path, v)`,
+  `jlp_set_path_meta(path, meta_json)` (zones + description),
+  `jlp_set_notifications(snapshot_json)`. Disables SDL's
+  global keyboard / mouse capture so the canvas doesn't fight the
+  designer page for input.
 - `src/wasm_stubs.cpp` — in-process implementations of the firmware's
   `SubjectRegistry`, `ZoneRegistry`, `NotificationsRegistry`,
   `net/sk_put.h`. Identical interfaces, no SensESP / SignalK
   plumbing — values come from JS via `jlp_set_value_*`.
 - `src/lv_conf.h` — LVGL config mirroring the firmware's
   `sensesp-cockpit-display/lv_conf.h`. Anything pixel-affecting
-  (color depth, theme, fonts) must stay in lockstep.
+  (color depth, theme, fonts, `LV_USE_FLOAT`) must stay in lockstep.
 - `public/` — build output (`jlp_wasm.js`, `jlp_wasm.wasm`) + a
   standalone `index.html` smoke test.
 - `CMakeLists.txt` — pulls LVGL + `widget_factory.cpp` from the
@@ -44,7 +53,9 @@ cd public && python3 -m http.server 8090
 ```
 
 The page calls `jlp_init(1024, 600)`, then `jlp_apply_layout(...)`
-with a tiny 4-widget layout (arc, label, bar, button).
+with a tiny multi-widget layout covering each supported kind
+(`label`, `value`, `toggle`, `arc`, `bar`, `bargroup`, `button`,
+`notifications`).
 
 ## JS API
 
