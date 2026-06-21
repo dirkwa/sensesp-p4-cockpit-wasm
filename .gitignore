@@ -1,4 +1,5 @@
 build/
-public/jlp_wasm.js
-public/jlp_wasm.wasm
+# public/jlp_wasm.{js,wasm} are intentionally committed (see AGENTS.md):
+# the designer pulls them without an emscripten toolchain. Keep them in
+# sync after any firmware widget change.
 src/lv_conf.firmware.h.ref
