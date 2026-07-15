@@ -55,6 +55,11 @@ add_library(jlp_widgets STATIC
   "${FW_ROOT}/widgets/widget_factory.cpp"
   "${CMAKE_SOURCE_DIR}/src/wasm_stubs.cpp")
 target_include_directories(jlp_widgets PUBLIC
+  # Shim dir first: satisfies notifications_registry.h's vestigial
+  # freertos/*.h includes (it uses no FreeRTOS types in the header; the
+  # real dependency is in the firmware .cpp we don't compile) without
+  # forking the firmware header.
+  "${CMAKE_SOURCE_DIR}/src/shim"
   "${FW_ROOT}"
   "${FW_ROOT}/widgets"
   "${JSON_ROOT}")
