@@ -281,6 +281,9 @@ void put_float(const std::string& p, float v) {
 void put_string(const std::string& p, const std::string& v) {
   last_puts()[p] = {"string", v};
 }
+void put_null(const std::string& p) {
+  last_puts()[p] = {"null", "null"};
+}
 void put_notification_ack(const std::string& path_after_prefix) {
   // In firmware this constructs an inbound SK delta. In WASM we
   // mirror the local-ack behavior so the alert overlay dismisses.
